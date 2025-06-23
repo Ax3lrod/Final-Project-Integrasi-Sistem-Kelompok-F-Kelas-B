@@ -91,6 +91,8 @@ export const MqttProvider = ({ children }: { children: ReactNode }) => {
   const selectWallet = useCallback(
     (paymentMethod: string) => {
       const lowerCaseMethod = paymentMethod.toLowerCase();
+      console.log(`Selecting wallet: ${lowerCaseMethod}`);
+      
       // 1. Simpan ke Local Storage
       localStorage.setItem("selectedWallet", lowerCaseMethod);
 
@@ -105,8 +107,8 @@ export const MqttProvider = ({ children }: { children: ReactNode }) => {
           email: MY_EMAIL,
           payment_method: lowerCaseMethod,
         });
+        console.log(`Publishing to ${topic}:`, payload);
         client.publish(topic, payload);
-        console.log(`Memilih wallet: ${lowerCaseMethod}, meminta data...`);
       }
     },
     [client, isConnected]
@@ -188,14 +190,19 @@ export const MqttProvider = ({ children }: { children: ReactNode }) => {
             `${TOPIC_PREFIX}/bankit/account-identity/request`,
             JSON.stringify({ email: MY_EMAIL })
           );
+          
           mqttClient.publish(
             `${TOPIC_PREFIX}/shopit/product-catalog/request`,
             "{}"
           );
 
+          // Load wallet dari localStorage jika ada
           const storedWallet = localStorage.getItem("selectedWallet");
           if (storedWallet) {
-            selectWallet(storedWallet);
+            // Gunakan timeout untuk memastikan subscription sudah aktif
+            setTimeout(() => {
+              selectWallet(storedWallet);
+            }, 1000);
           }
         }
       });
@@ -208,11 +215,9 @@ export const MqttProvider = ({ children }: { children: ReactNode }) => {
 
       if (!message.status) {
         console.error(`API Error on topic ${topic}:`, message.message);
-        // Bisa ditambahkan notifikasi error ke user di sini
         return;
       }
 
-      // --- Handler untuk setiap topic ---
       const topicParts = topic.split("/");
       const mainTopic = topicParts.slice(2).join("/");
 
@@ -222,19 +227,29 @@ export const MqttProvider = ({ children }: { children: ReactNode }) => {
           break;
 
         case "bankit/wallet-identity/response":
+          console.log("Wallet identity received:", message.data);
           setWallet(message.data);
-          // Setelah dapat identitas wallet, langsung minta history-nya
-          mqttClient.publish(
-            `${TOPIC_PREFIX}/bankit/wallet-history/request`,
-            JSON.stringify({
-              email: MY_EMAIL,
-              payment_method: message.data.payment_method,
-            })
-          );
+          // Pastikan payment_method ada sebelum request history
+          if (message.data && message.data.payment_method) {
+            console.log(
+              "Requesting wallet history for:",
+              message.data.payment_method
+            );
+            mqttClient.publish(
+              `${TOPIC_PREFIX}/bankit/wallet-history/request`,
+              JSON.stringify({
+                email: MY_EMAIL,
+                payment_method: message.data.payment_method,
+              })
+            );
+          } else {
+            console.error("No payment_method in wallet identity response");
+          }
           break;
 
         case "bankit/wallet-history/response":
-          setTransactionHistory(message.data.transactions);
+          console.log("Wallet history received:", message.data);
+          setTransactionHistory(message.data.transactions || []);
           // Update saldo dari history juga untuk sinkronisasi
           setWallet((prev) =>
             prev ? { ...prev, balance: message.data.current_balance } : null
@@ -245,35 +260,47 @@ export const MqttProvider = ({ children }: { children: ReactNode }) => {
           setProducts(message.data);
           break;
 
-        case `bankit/${wallet?.payment_method}/transfer/send/response`:
         case `shopit/buy/response`:
-          // Ini adalah konfirmasi aksi yg kita lakukan, saldo sudah diupdate dari live-history
-          // Cukup refresh history untuk melihat detailnya
-          console.log("Aksi berhasil, me-refresh history...");
-          mqttClient.publish(
-            `${TOPIC_PREFIX}/bankit/wallet-history/request`,
-            JSON.stringify({
-              email: MY_EMAIL,
-              payment_method: wallet?.payment_method,
-            })
-          );
+          console.log("Purchase response:", message);
+          // Refresh wallet data setelah purchase
+          if (wallet && wallet.payment_method) {
+            console.log("Refreshing wallet after purchase...");
+            mqttClient.publish(
+              `${TOPIC_PREFIX}/bankit/wallet-identity/request`,
+              JSON.stringify({
+                email: MY_EMAIL,
+                payment_method: wallet.payment_method,
+              })
+            );
+          }
           break;
 
-        case `bankit/${wallet?.payment_method}/transfer/receive`:
-        case `bankit/${wallet?.payment_method}/live-history`:
-          // Ini adalah update live, sumber data paling update untuk saldo!
-          setWallet((prev) =>
-            prev ? { ...prev, balance: message.data.current_balance } : null
-          );
-          // Tambahkan notifikasi atau refresh history
-          console.log("Live update diterima, me-refresh history...");
-          mqttClient.publish(
-            `${TOPIC_PREFIX}/bankit/wallet-history/request`,
-            JSON.stringify({
-              email: MY_EMAIL,
-              payment_method: wallet?.payment_method,
-            })
-          );
+        // Transfer responses
+        default:
+          if (mainTopic.includes("transfer/send/response")) {
+            console.log("Transfer response:", message);
+            // Refresh wallet setelah transfer
+            if (wallet && wallet.payment_method) {
+              mqttClient.publish(
+                `${TOPIC_PREFIX}/bankit/wallet-identity/request`,
+                JSON.stringify({
+                  email: MY_EMAIL,
+                  payment_method: wallet.payment_method,
+                })
+              );
+            }
+          } else if (
+            mainTopic.includes("transfer/receive") ||
+            mainTopic.includes("live-history")
+          ) {
+            console.log("Live update:", message);
+            // Update saldo real-time
+            if (message.data && message.data.current_balance !== undefined) {
+              setWallet((prev) =>
+                prev ? { ...prev, balance: message.data.current_balance } : null
+              );
+            }
+          }
           break;
       }
     });
