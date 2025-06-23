@@ -167,7 +167,7 @@ export default function Transfer() {
             </div>
 
             {/* Content */}
-            <div className="mb-6">
+            <div className="mb-6 flex flex-col h-20">
               <h2 className="text-xl font-bold text-slate-800 mb-2">
                 Sesama {activeWallet?.displayName || "E-Wallet"}
               </h2>
@@ -181,7 +181,7 @@ export default function Transfer() {
                 setTransferType('same');
                 setShowTransferForm(true);
               }}
-            className={`w-full px-6 py-3 bg-gradient-to-r ${
+            className={`items-end w-full px-6 py-3 bg-gradient-to-r ${
               activeWallet?.value === 'owo' 
                 ? 'from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800'
                 : activeWallet?.value === 'ringaja'
@@ -217,7 +217,7 @@ export default function Transfer() {
             </div>
 
             {/* Content */}
-            <div className="mb-6">
+            <div className="mb-6 flex flex-col h-20">
               <h2 className="text-xl font-bold text-slate-800 mb-2">
                 Transfer Antar E-Wallet
               </h2>
@@ -231,7 +231,7 @@ export default function Transfer() {
                 setTransferType('inter');
                 setShowTransferForm(true);
               }}
-            className="w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-medium rounded-xl hover:from-emerald-700 hover:to-emerald-800 transform hover:scale-[1.02] transition-all duration-200 shadow-lg hover:shadow-xl">
+            className="items-end w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-medium rounded-xl hover:from-emerald-700 hover:to-emerald-800 transform hover:scale-[1.02] transition-all duration-200 shadow-lg hover:shadow-xl">
               <div className="flex items-center justify-center gap-2">
                 <span>Mulai Transfer</span>
                 <ArrowRight className="w-4 h-4" />

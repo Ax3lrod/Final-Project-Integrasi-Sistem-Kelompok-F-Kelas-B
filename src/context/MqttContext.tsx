@@ -122,20 +122,63 @@ export const MqttProvider = ({ children }: { children: ReactNode }) => {
   }, [client, isConnected, wallet, selectWallet]);
 
   const transferBalance = useCallback(
-    (receiverEmail: string, receiverPaymentMethod: string, amount: number) => {
-      if (client && isConnected && wallet) {
-        const topic = `${TOPIC_PREFIX}/bankit/${wallet.payment_method}/transfer/send/request`;
-        const payload = JSON.stringify({
-          sender_email: MY_EMAIL,
-          receiver_payment_method: receiverPaymentMethod.toLowerCase(),
-          receiver_email: receiverEmail,
-          amount,
-        });
-        client.publish(topic, payload);
+  (receiverEmail: string, receiverPaymentMethod: string, amount: number): Promise<{ success: boolean; message?: string }> => {
+    return new Promise((resolve) => {
+      if (!client || !isConnected || !wallet) {
+        return resolve({ success: false, message: "MQTT belum siap" });
       }
-    },
-    [client, isConnected, wallet]
-  );
+
+      const requestTopic = `${TOPIC_PREFIX}/bankit/${wallet.payment_method}/transfer/send/request`;
+      const responseTopic = `${TOPIC_PREFIX}/bankit/${wallet.payment_method}/transfer/send/response`;
+
+      const requestPayload = {
+        sender_email: MY_EMAIL,
+        receiver_payment_method: receiverPaymentMethod.toLowerCase(),
+        receiver_email: receiverEmail,
+        amount,
+      };
+
+      const payload = JSON.stringify(requestPayload);
+
+      const onResponse = (topic: string, message: Buffer) => {
+        if (topic !== responseTopic) return;
+
+        try {
+          const res = JSON.parse(message.toString());
+
+          // Hanya proses jika sender_email sesuai (hindari konflik antar user)
+          if (res.sender_email !== MY_EMAIL) return;
+
+          clearTimeout(timeout); // Hentikan timeout
+          client?.removeListener("message", onResponse);
+          client?.unsubscribe(responseTopic);
+
+          resolve({
+            success: res.status === "success",
+            message: res.message || undefined,
+          });
+        } catch {
+          clearTimeout(timeout);
+          client?.removeListener("message", onResponse);
+          client?.unsubscribe(responseTopic);
+
+          resolve({ success: false, message: "Format respons tidak valid" });
+        }
+      };
+
+      client.subscribe(responseTopic, () => {
+        client?.on("message", onResponse);
+        client.publish(requestTopic, payload);
+      });
+
+      const timeout = setTimeout(() => {
+        client?.removeListener("message", onResponse);
+        client?.unsubscribe(responseTopic);
+      }, 5000);
+    });
+  },
+  [client, isConnected, wallet]
+);
 
   const purchaseProduct = useCallback(
     (productId: string, quantity: number) => {

@@ -128,49 +128,47 @@ const TransferForms = ({onBack, initialType}: TransferFormsProps) => {
   };
 
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-    if (!isConnected) {
-      toast.error("Koneksi MQTT terputus");
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+
+  if (!validateForm()) return;
+  if (!isConnected) {
+    toast.error("Koneksi MQTT terputus");
+    return;
+  }
+
+  try {
+    const targetPaymentMethod = activeTab === "same" 
+      ? wallet?.payment_method 
+      : formData.receiverPaymentMethod;
+
+    const result = await transferBalance(
+      formData.receiverEmail,
+      targetPaymentMethod || "",
+      parseFloat(formData.amount)
+    ) ?? { success: false, message: "Transfer gagal." };
+
+    if (!result.success) {
+      toast.error(result.message || "Transfer gagal.");
+      setIsLoading(false); 
       return;
     }
 
-    setIsLoading(true);
-    
-    try {
-      const targetPaymentMethod = activeTab === "same" 
-        ? wallet?.payment_method 
-        : formData.receiverPaymentMethod;
+    setFormData({
+      receiverEmail: "",
+      receiverPaymentMethod: "",
+      amount: "",
+    });
 
-      await transferBalance(
-        formData.receiverEmail,
-        targetPaymentMethod || "",
-        parseFloat(formData.amount)
-      );
-
-      toast.success("Transfer berhasil dikirim!");
-      
-      // Reset form
-      setFormData({
-        receiverEmail: "",
-        receiverPaymentMethod: "",
-        amount: "",
-      });
-      
-      // Kembali ke halaman utama setelah 2 detik
-      setTimeout(() => {
-        onBack();
-      }, 2000);
-      
-    } catch (error) {
+    setTimeout(() => {
+          onBack();
+        }, 2000);
+  } catch (error) {
       console.error("Transfer error:", error);
       toast.error("Transfer gagal. Silakan coba lagi.");
-    } finally {
-      setIsLoading(false);
-    }
+  }     
   };
+
   
   useEffect(() => {
     const timer = setTimeout(() => {
