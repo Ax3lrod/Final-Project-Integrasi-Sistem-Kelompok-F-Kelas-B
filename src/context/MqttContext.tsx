@@ -8,6 +8,7 @@ import {
   ReactNode,
   useCallback,
 } from "react";
+import toast from "react-hot-toast";
 import mqtt, { MqttClient } from "mqtt";
 
 // --- Tipe Data Sesuai Spesifikasi API Anda ---
@@ -300,6 +301,9 @@ export const MqttProvider = ({ children }: { children: ReactNode }) => {
                 prev ? { ...prev, balance: message.data.current_balance } : null
               );
             }
+
+            // Tambahkan toast untuk live updates
+            toast.success(message.message || "Transaksi baru diterima!");
           }
           break;
       }

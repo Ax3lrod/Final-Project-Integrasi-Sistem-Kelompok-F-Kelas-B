@@ -12,7 +12,7 @@ import {
   Banknote,
 } from "lucide-react";
 
-// Varian animasi untuk framer-motion
+// Animasi untuk framer-motion
 const sidebarVariants = {
   hidden: { x: -300, opacity: 0 },
   visible: {
@@ -31,42 +31,44 @@ const navContainerVariants = {
   hidden: {},
   visible: {
     transition: {
-      staggerChildren: 0.08, // Menu akan muncul satu per satu
+      staggerChildren: 0.08,
       delayChildren: 0.2,
     },
   },
 };
 
-// Komponen untuk setiap item menu dengan animasi
+// Komponen item menu
 const SidebarItem = ({
   icon: Icon,
   text,
   active,
   href,
+  colorClass,
 }: {
   icon: React.ElementType;
   text: string;
   active: boolean;
   href: string;
+  colorClass: string;
 }) => (
   <motion.li variants={itemVariants}>
     <Link href={href}>
       <div
         className={`
-        flex items-center gap-3.5 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200 relative
-        ${
-          active
-            ? "bg-blue-600 text-white shadow-md"
-            : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-        }
-      `}
+          flex items-center gap-3.5 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200 relative
+          ${
+            active
+              ? `${colorClass} text-white shadow-md`
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+          }
+        `}
       >
         <Icon className="w-5 h-5" />
         <span className="font-semibold text-sm">{text}</span>
         {active && (
           <motion.div
-            className="absolute -left-2 top-0 h-full w-1.5 bg-blue-600 rounded-r-full"
-            layoutId="active-indicator" // Animasi magic move!
+            className={`absolute -left-2 top-0 h-full w-1.5 ${colorClass} rounded-r-full`}
+            layoutId="active-indicator"
           />
         )}
       </div>
@@ -75,8 +77,40 @@ const SidebarItem = ({
 );
 
 export default function Sidebar() {
-  const { user, selectWallet } = useMqtt();
+  const { user, wallet, selectWallet } = useMqtt();
   const pathname = usePathname();
+
+  const eWalletOptions = [
+    {
+      displayName: "DoPay",
+      value: "dopay",
+      logoColor: "text-blue-500",
+      gradient: "from-blue-500 to-blue-600",
+      colorClass: "bg-blue-600",
+    },
+    {
+      displayName: "OWO",
+      value: "owo",
+      logoColor: "text-purple-500",
+      gradient: "from-purple-500 to-purple-600",
+      colorClass: "bg-purple-600",
+    },
+    {
+      displayName: "RiNG Aja",
+      value: "ringaja",
+      logoColor: "text-red-500",
+      gradient: "from-red-500 to-red-600",
+      colorClass: "bg-red-600",
+    },
+  ];
+
+  const activeWallet = eWalletOptions.find(
+    (w) => w.value === wallet?.payment_method.toLowerCase()
+  );
+
+  const getActiveColor = () => {
+    return activeWallet?.colorClass || "bg-blue-600";
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("selectedWallet");
@@ -91,19 +125,25 @@ export default function Sidebar() {
       initial="hidden"
       animate="visible"
     >
-      {/* Logo Section */}
+      {/* Logo */}
       <motion.div
         className="flex items-center gap-3 p-6 border-b border-slate-200/80"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0, transition: { delay: 0.1 } }}
       >
-        <div className="p-2 bg-blue-600 text-white rounded-lg">
+        <div
+          className={`p-2 bg-gradient-to-br ${
+            activeWallet?.gradient || "from-gray-400 to-gray-500"
+          } text-white rounded-lg`}
+        >
           <Banknote className="w-6 h-6" />
         </div>
-        <h1 className="font-bold text-xl text-slate-800">BankIT</h1>
+        <h1 className="font-bold text-xl text-slate-800">
+          {activeWallet?.displayName || "E-Wallet"}
+        </h1>
       </motion.div>
 
-      {/* Profil Section */}
+      {/* Profil */}
       <motion.div
         className="p-6 text-left"
         initial={{ opacity: 0 }}
@@ -118,7 +158,7 @@ export default function Sidebar() {
         </p>
       </motion.div>
 
-      {/* Navigation Menu */}
+      {/* Navigasi */}
       <motion.nav
         className="flex-1 px-4"
         variants={navContainerVariants}
@@ -131,23 +171,26 @@ export default function Sidebar() {
             text="Dashboard"
             active={pathname === "/me"}
             href="/me"
+            colorClass={getActiveColor()}
           />
           <SidebarItem
             icon={Send}
             text="Transfer"
             active={pathname === "/me/transfer"}
             href="/me/transfer"
+            colorClass={getActiveColor()}
           />
           <SidebarItem
             icon={ShoppingCart}
             text="Toko"
             active={pathname === "/shop"}
             href="/shop"
+            colorClass={getActiveColor()}
           />
         </ul>
       </motion.nav>
 
-      {/* Logout/Switch Wallet Section */}
+      {/* Logout */}
       <motion.div
         className="p-4 mt-auto border-t border-slate-200/80"
         initial={{ opacity: 0, y: 20 }}
