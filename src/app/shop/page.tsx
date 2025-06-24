@@ -15,11 +15,11 @@ interface Product {
 }
 
 export default function ShopPage() {
-  const { products, isConnected, purchaseProduct, wallet, selectWallet, refetchWallet } = useMqtt();
+  const { products, isConnected, purchaseProduct, wallet, selectWallet } = useMqtt();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [purchaseQuantity, setPurchaseQuantity] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isNavigating, setIsNavigating] = useState(false); 
+  const [isNavigating] = useState(false); 
   const router = useRouter();
 
   const openProductDetail = (product: Product) => {
@@ -34,29 +34,30 @@ export default function ShopPage() {
   };
 
   const handlePurchase = () => {
-    if (selectedProduct && wallet) {
-      const loadingToast = toast.loading('Processing your purchase...');
-      
-      try {
-        purchaseProduct(selectedProduct.id, purchaseQuantity);
-        
-        toast.success(
-          `Successfully purchased ${purchaseQuantity}x ${selectedProduct.name}!`,
-          {
-            id: loadingToast,
-            duration: 4000,
-          }
-        );
-        
-        closeModal();
-        
-      } catch (error) {
-        toast.error('Purchase failed. Please try again.', {
+  if (selectedProduct && wallet) {
+    const loadingToast = toast.loading("Processing your purchase...");
+
+    try {
+      purchaseProduct(selectedProduct.id, purchaseQuantity);
+
+      toast.success(
+        `Successfully purchased ${purchaseQuantity}x ${selectedProduct.name}!`,
+        {
           id: loadingToast,
-        });
-      }
+          duration: 4000,
+        }
+      );
+
+      closeModal();
+
+    } catch {
+      toast.error("Purchase failed. Please try again.", {
+        id: loadingToast,
+      });
     }
-  };
+  }
+};
+
 
   const handleWalletSelect = (paymentMethod: string) => {
     const loadingToast = toast.loading('Loading wallet...');
@@ -71,7 +72,7 @@ export default function ShopPage() {
         });
       }, 1000);
       
-    } catch (error) {
+    } catch{
       toast.error('Failed to load wallet', {
         id: loadingToast,
       });

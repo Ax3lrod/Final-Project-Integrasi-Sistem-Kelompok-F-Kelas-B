@@ -56,6 +56,7 @@ interface MqttContextType {
   // Aksi yang bisa dipanggil dari komponen
   selectWallet: (wallet: string) => void;
   refetchWallet: () => void;
+  refetchWalletHistory: () => void;
   transferBalance: (
     receiverEmail: string,
     receiverPaymentMethod: string,
@@ -120,6 +121,18 @@ export const MqttProvider = ({ children }: { children: ReactNode }) => {
       selectWallet(wallet.payment_method);
     }
   }, [client, isConnected, wallet, selectWallet]);
+
+  const refetchWalletHistory = useCallback(() => {
+    if (client && isConnected && wallet) {
+      const topic = `${TOPIC_PREFIX}/bankit/wallet-history/request`;
+      const payload = JSON.stringify({
+        email: MY_EMAIL,
+        payment_method: wallet.payment_method,
+      });
+      console.log(`Requesting wallet history on ${topic}:`, payload);
+      client.publish(topic, payload);
+    }
+  }, [client, isConnected, wallet]);
 
   const transferBalance = useCallback(
   (receiverEmail: string, receiverPaymentMethod: string, amount: number): Promise<{ success: boolean; message?: string }> => {
@@ -351,7 +364,6 @@ export const MqttProvider = ({ children }: { children: ReactNode }) => {
           break;
       }
     });
-
     return () => {
       if (mqttClient) mqttClient.end();
     };
@@ -369,6 +381,7 @@ export const MqttProvider = ({ children }: { children: ReactNode }) => {
         transactionHistory,
         selectWallet,
         refetchWallet,
+        refetchWalletHistory,
         transferBalance,
         purchaseProduct,
       }}

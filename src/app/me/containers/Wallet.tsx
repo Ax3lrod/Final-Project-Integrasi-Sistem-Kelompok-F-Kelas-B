@@ -75,7 +75,14 @@ const itemVariants = {
 // --- Komponen Utama Dashboard ---
 
 export default function WalletInfo() {
-  const { user, wallet, transactionHistory, isConnected } = useMqtt();
+ const { user, wallet, transactionHistory, isConnected, refetchWalletHistory } = useMqtt();
+
+  useEffect(() => {
+    if (isConnected && wallet) {
+      refetchWalletHistory(); 
+    }
+  }, [isConnected, wallet, refetchWalletHistory]);
+
   const router = useRouter();
 
   useEffect(() => {
