@@ -15,7 +15,7 @@ interface Product {
 }
 
 export default function ShopPage() {
-  const { products, isConnected, purchaseProduct, wallet, selectWallet } = useMqtt();
+  const { products, isConnected, purchaseProduct, wallet, selectWallet, refetchProducts } = useMqtt();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [purchaseQuantity, setPurchaseQuantity] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -35,26 +35,11 @@ export default function ShopPage() {
 
   const handlePurchase = () => {
   if (selectedProduct && wallet) {
-    const loadingToast = toast.loading("Processing your purchase...");
-
-    try {
       purchaseProduct(selectedProduct.id, purchaseQuantity);
-
-      toast.success(
-        `Successfully purchased ${purchaseQuantity}x ${selectedProduct.name}!`,
-        {
-          id: loadingToast,
-          duration: 4000,
-        }
-      );
-
       closeModal();
-
-    } catch {
-      toast.error("Purchase failed. Please try again.", {
-        id: loadingToast,
-      });
-    }
+      setTimeout(() => {
+        refetchProducts();
+      }, 500);
   }
 };
 
@@ -152,7 +137,7 @@ export default function ShopPage() {
             {wallet && (
               <div className="mt-4 inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-lg">
                 <span className="font-medium">
-                  Balance: ${wallet.balance.toLocaleString()} ({wallet.payment_method})
+                  Balance: Rp{wallet.balance.toLocaleString()} ({wallet.payment_method})
                 </span>
               </div>
             )}
@@ -192,7 +177,7 @@ export default function ShopPage() {
                     </h3>
                     <div className="flex items-center justify-between">
                       <span className="text-2xl font-bold text-blue-600">
-                        ${product.price.toLocaleString()}
+                        Rp{product.price.toLocaleString()}
                       </span>
                       <span className={`px-2 py-1 rounded text-sm ${
                         product.quantity > 0 
@@ -260,7 +245,7 @@ export default function ShopPage() {
                     
                     <div className="flex items-center justify-between">
                       <span className="text-3xl font-bold text-blue-600">
-                        ${selectedProduct.price.toLocaleString()}
+                        Rp{selectedProduct.price.toLocaleString()}
                       </span>
                       <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                         selectedProduct.quantity > 0 
@@ -301,13 +286,13 @@ export default function ShopPage() {
                         <div className="flex items-center justify-between">
                           <span className="font-medium text-gray-700">Total:</span>
                           <span className="text-xl font-bold text-blue-600">
-                            ${(selectedProduct.price * purchaseQuantity).toLocaleString()}
+                            Rp{(selectedProduct.price * purchaseQuantity).toLocaleString()}
                           </span>
                         </div>
 
                         {wallet.balance < (selectedProduct.price * purchaseQuantity) && (
                           <p className="text-red-600 text-sm text-center">
-                            You need ${((selectedProduct.price * purchaseQuantity) - wallet.balance).toLocaleString()} more
+                            You need Rp{((selectedProduct.price * purchaseQuantity) - wallet.balance).toLocaleString()} more
                           </p>
                         )}
                       </div>

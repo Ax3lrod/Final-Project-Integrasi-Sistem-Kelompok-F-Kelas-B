@@ -311,14 +311,19 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               </span>
               <input
                 type="number"
+                onWheel={(e) => e.currentTarget.blur()}
                 value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value, 10);
+                  setFormData({
+                    ...formData,
+                    amount: isNaN(value) ? "" : value.toString(),
+                  });
+                }}
                 className={`w-full pl-12 pr-4 py-3 border rounded-xl text-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
                   errors.amount ? "border-red-300" : "border-slate-300"
                 }`}
                 placeholder="0"
-                min="1000"
-                step="1000"
               />
             </div>
             {errors.amount && (
